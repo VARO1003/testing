@@ -1,8 +1,26 @@
-# INTEND Dashboard Requirements - Streamlit Cloud Compatible
+# Core dependencies
+flask==2.3.3
+flask-cors==4.0.0
 streamlit==1.28.0
-pandas==2.0.2
+requests==2.31.0
+
+# Data processing
+pandas==2.0.3
 numpy==1.24.3
+scikit-learn==1.3.0
+joblib==1.3.2
+
+# Computer Vision & Audio
+opencv-python==4.8.1.78
+mediapipe==0.10.0
+speechrecognition==3.10.0
+pyaudio==0.2.11
+pygame==2.5.0
+
+# Visualization
 plotly==5.15.0
 matplotlib==3.7.1
-requests==2.31.0
+
+# Utilities
+python-dotenv==1.0.0
 protobuf==3.20.3
