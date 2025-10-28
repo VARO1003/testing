@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-INTEND - Intelligence Doll Dashboard
-Dashboard utama untuk monitoring kesehatan mental Generasi Z
+INTEND Dashboard Streamlit - Terhubung ke Server Lokal
+Website untuk monitoring dan analisis data pasien secara real-time
 """
 
 import streamlit as st
@@ -11,18 +11,17 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import requests
+import json
+import time
 import warnings
 warnings.filterwarnings('ignore')
 
-# Konfigurasi halaman
-st.set_page_config(
-    page_title="INTEND - Intelligence Doll",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Konfigurasi
+SERVER_URL = "http://localhost:5000"  # Ganti dengan IP laptop MSI jika perlu
+REFRESH_INTERVAL = 5  # seconds
 
-# Custom CSS
+# Custom CSS untuk styling
 st.markdown("""
 <style>
     .main-header {
@@ -30,6 +29,7 @@ st.markdown("""
         color: #2c3e50;
         text-align: center;
         margin-bottom: 1rem;
+        font-weight: bold;
     }
     .sub-header {
         font-size: 1.5rem;
@@ -42,6 +42,7 @@ st.markdown("""
         padding: 1rem;
         border-radius: 10px;
         border-left: 4px solid #3498db;
+        margin: 0.5rem 0;
     }
     .feature-card {
         background: white;
@@ -49,6 +50,7 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         margin: 0.5rem;
+        border: 1px solid #e0e0e0;
     }
     .speech-transcript {
         background: #f8f9fa;
@@ -56,176 +58,238 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #e74c3c;
         margin: 0.5rem 0;
+        font-family: monospace;
+    }
+    .emotion-happy { color: #2ecc71; font-weight: bold; }
+    .emotion-sad { color: #3498db; font-weight: bold; }
+    .emotion-angry { color: #e74c3c; font-weight: bold; }
+    .emotion-neutral { color: #95a5a6; font-weight: bold; }
+    .emotion-calm { color: #9b59b6; font-weight: bold; }
+    
+    /* Loading spinner */
+    .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Mock database - DIUBAH sesuai structure data real dari client
-MOCK_DATABASE = {
-    "Bpk. Budi Setiawan": {
-        "demografi": {
-            "usia": 22,
-            "jenis_kelamin": "Laki-laki",
-            "pekerjaan": "Mahasiswa",
-            "tanggal_mulai": "2025-09-01"
-        },
-        "2025-10-17": {
-            "emosi_dominan": "Sedih",
-            "skor_sentimen": -0.72,
-            "durasi_sesi": "7 menit 12 detik",
-            "deteksi_wajah": {
-                "senang": 0.05,
-                "sedih": 0.72,
-                "netral": 0.15,
-                "marah": 0.08
-            },
-            "analisis_suara": {
-                "transkrip_lengkap": """
-                [10:00:15] Saya merasa sangat lelah akhir-akhir ini
-                [10:00:22] Sering bangun tengah malam dan susah tidur lagi
-                [10:00:35] Rasanya semua jadi hampa dan nggak ada semangat
-                [10:00:45] Capek banget, kayak beban terus aja
-                [10:01:02] Kadang merasa sendirian meskipun ada orang sekitar
-                """,
-                "kata_kunci": "lelah hampa beban capek sendirian nggak berguna kosong capek lelah hampa beban nggak minat bodoh lelah capek beban hampa",
-                "analisis_sentimen": {
-                    "skor": -0.72,
-                    "kategori": "Negatif",
-                    "kata_positif": 2,
-                    "kata_negatif": 15,
-                    "kata_netral": 8
-                },
-                "gejala_terdeteksi": {
-                    "fatigue": 8,
-                    "insomnia": 3,
-                    "loneliness": 5,
-                    "hopelessness": 4,
-                    "anhedonia": 3
-                },
-                "pola_bicara": {
-                    "kata_per_menit": 42,
-                    "kecepatan_bicara": "Lambat",
-                    "frekuensi_jeda": "Tinggi"
-                }
-            },
-            "file_mentah": {
-                "video": "https://link-ke-cloud.com/pasienA_20251017.mp4",
-                "audio": "https://link-ke-cloud.com/pasienA_20251017.wav",
-                "transkrip": "https://link-ke-cloud.com/pasienA_20251017.txt",
-                "data_teknis": "https://link-ke-cloud.com/pasienA_20251017.json"
-            }
-        },
-        "2025-10-16": {
-            "emosi_dominan": "Netral",
-            "skor_sentimen": -0.15,
-            "durasi_sesi": "5 menit 45 detik",
-            "deteksi_wajah": {
-                "senang": 0.10,
-                "sedih": 0.25,
-                "netral": 0.55,
-                "marah": 0.10
-            },
-            "analisis_suara": {
-                "transkrip_lengkap": """
-                [09:30:10] Hari ini biasa aja sih
-                [09:30:25] Cuma agak mager dan bosen
-                [09:30:40] Tugas kuliah numpuk terus
-                [09:30:55] Tapi masih bisa dikerjain kok
-                """,
-                "kata_kunci": "biasa aja mager bosen tugas kuliah capek",
-                "analisis_sentimen": {
-                    "skor": -0.15,
-                    "kategori": "Netral",
-                    "kata_positif": 3,
-                    "kata_negatif": 4,
-                    "kata_netral": 6
-                },
-                "gejala_terdeteksi": {
-                    "fatigue": 4,
-                    "academic_stress": 3,
-                    "boredom": 2
-                },
-                "pola_bicara": {
-                    "kata_per_menit": 65,
-                    "kecepatan_bicara": "Normal", 
-                    "frekuensi_jeda": "Sedang"
-                }
-            },
-            "file_mentah": {
-                "video": "https://link-ke-cloud.com/pasienA_20251016.mp4",
-                "audio": "https://link-ke-cloud.com/pasienA_20251016.wav",
-                "transkrip": "https://link-ke-cloud.com/pasienA_20251016.txt",
-                "data_teknis": "https://link-ke-cloud.com/pasienA_20251016.json"
-            }
-        }
-    },
-    "Ibu Citra Wahyuningsih": {
-        "demografi": {
-            "usia": 21,
-            "jenis_kelamin": "Perempuan", 
-            "pekerjaan": "Mahasiswi",
-            "tanggal_mulai": "2025-09-15"
-        },
-        "2025-10-17": {
-            "emosi_dominan": "Netral",
-            "skor_sentimen": 0.05,
-            "durasi_sesi": "4 menit 02 detik",
-            "deteksi_wajah": {
-                "senang": 0.20,
-                "sedih": 0.15,
-                "netral": 0.60,
-                "marah": 0.05
-            },
-            "analisis_suara": {
-                "transkrip_lengkap": """
-                [11:15:05] Nggak apa-apa kok, udah lebih baik
-                [11:15:18] Tugas akhirnya udah selesai
-                [11:15:30] Sekarang tinggal nunggu sidang aja
-                [11:15:45] Lumayan lega sih akhirnya
-                """,
-                "kata_kunci": "nggak apa-apa udah lebih baik tugas selesai lega sidang",
-                "analisis_sentimen": {
-                    "skor": 0.05,
-                    "kategori": "Netral",
-                    "kata_positif": 5,
-                    "kata_negatif": 1,
-                    "kata_netral": 7
-                },
-                "gejala_terdeteksi": {
-                    "academic_stress": 2,
-                    "relief": 3
-                },
-                "pola_bicara": {
-                    "kata_per_menit": 70,
-                    "kecepatan_bicara": "Normal",
-                    "frekuensi_jeda": "Rendah"
-                }
-            },
-            "file_mentah": {
-                "video": "https://link-ke-cloud.com/pasienB_20251017.mp4",
-                "audio": "https://link-ke-cloud.com/pasienB_20251017.wav",
-                "transkrip": "https://link-ke-cloud.com/pasienB_20251017.txt",
-                "data_teknis": "https://link-ke-cloud.com/pasienB_20251017.json"
-            }
-        }
-    }
-}
+class INTENDDashboard:
+    def __init__(self, server_url):
+        self.server_url = server_url
+        self.connection_status = False
+        self.last_update = None
+        
+    def check_connection(self):
+        """Cek koneksi ke server"""
+        try:
+            response = requests.get(f"{self.server_url}/api/health", timeout=5)
+            if response.status_code == 200:
+                self.connection_status = True
+                return True
+            else:
+                self.connection_status = False
+                return False
+        except:
+            self.connection_status = False
+            return False
+    
+    def get_patients(self):
+        """Ambil data pasien dari server"""
+        try:
+            response = requests.get(f"{self.server_url}/api/data/patients", timeout=10)
+            if response.status_code == 200:
+                return response.json().get('patients', [])
+            else:
+                st.error(f"Error fetching patients: {response.text}")
+                return []
+        except Exception as e:
+            st.error(f"Connection error: {str(e)}")
+            return []
+    
+    def get_patient_sessions(self, patient_id):
+        """Ambil sesi untuk pasien tertentu"""
+        try:
+            response = requests.get(f"{self.server_url}/api/data/sessions/{patient_id}", timeout=10)
+            if response.status_code == 200:
+                return response.json().get('sessions', [])
+            else:
+                return []
+        except Exception as e:
+            st.error(f"Error fetching sessions: {str(e)}")
+            return []
+    
+    def get_session_data(self, session_id):
+        """Ambil data lengkap sesi"""
+        try:
+            response = requests.get(f"{self.server_url}/api/data/session/{session_id}", timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return None
+        except Exception as e:
+            st.error(f"Error fetching session data: {str(e)}")
+            return None
+    
+    def get_realtime_analytics(self, session_id):
+        """Ambil data real-time untuk sesi aktif"""
+        try:
+            response = requests.get(f"{self.server_url}/api/analytics/realtime/{session_id}", timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return None
+        except Exception as e:
+            return None
+    
+    def get_session_files(self, session_id):
+        """Ambil daftar file untuk sesi"""
+        try:
+            response = requests.get(f"{self.server_url}/api/files/session/{session_id}", timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {}
+        except Exception as e:
+            st.error(f"Error fetching session files: {str(e)}")
+            return {}
 
-def _sorted_session_keys(patient_data):
-    """
-    Return session keys sorted descending by date (ISO yyyy-mm-dd).
-    If parsing fails, fallback to the original insertion order.
-    """
-    session_keys = [k for k in patient_data.keys() if k != "demografi"]
-    try:
-        sorted_keys = sorted(
-            session_keys,
-            key=lambda d: datetime.strptime(d, "%Y-%m-%d"),
-            reverse=True
-        )
-        return sorted_keys
-    except Exception:
-        return session_keys
+# Initialize dashboard
+dashboard = INTENDDashboard(SERVER_URL)
+
+def emotion_color(emotion):
+    """Return color class for emotion"""
+    color_map = {
+        'happy': 'emotion-happy',
+        'sad': 'emotion-sad', 
+        'angry': 'emotion-angry',
+        'neutral': 'emotion-neutral',
+        'calm': 'emotion-calm'
+    }
+    return color_map.get(emotion, 'emotion-neutral')
+
+def show_loading_spinner():
+    """Show loading spinner"""
+    st.markdown("""
+    <div class="loading-spinner">
+        <div style="text-align: center;">
+            <div>🔄 Loading data from INTEND Server...</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def show_connection_status():
+    """Show server connection status"""
+    if dashboard.check_connection():
+        st.sidebar.success("✅ Terhubung ke INTEND Server")
+        health_response = requests.get(f"{SERVER_URL}/api/health", timeout=5)
+        if health_response.status_code == 200:
+            health_data = health_response.json()
+            st.sidebar.metric("Active Sessions", health_data.get('active_sessions', 0))
+            st.sidebar.metric("Storage Usage", f"{health_data.get('storage_usage', 0)} MB")
+    else:
+        st.sidebar.error("❌ Tidak dapat terhubung ke server")
+        st.sidebar.info("Pastikan server berjalan di http://localhost:5000")
+
+def show_home():
+    """Dashboard Utama"""
+    st.markdown('<h1 class="main-header">INTEND</h1>', unsafe_allow_html=True)
+    st.markdown('<h2 class="sub-header">Intelligence Doll untuk Kesehatan Mental Generasi Z</h2>', unsafe_allow_html=True)
+    
+    # Quick stats
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        patients = dashboard.get_patients()
+        st.metric("Total Pasien", len(patients))
+    
+    with col2:
+        total_sessions = 0
+        for patient in patients:
+            sessions = dashboard.get_patient_sessions(patient.get('patient_id'))
+            total_sessions += len(sessions)
+        st.metric("Total Sesi", total_sessions)
+    
+    with col3:
+        # Active sessions dari health endpoint
+        try:
+            health_response = requests.get(f"{SERVER_URL}/api/health", timeout=5)
+            if health_response.status_code == 200:
+                active_sessions = health_response.json().get('active_sessions', 0)
+                st.metric("Sesi Aktif", active_sessions)
+            else:
+                st.metric("Sesi Aktif", 0)
+        except:
+            st.metric("Sesi Aktif", 0)
+    
+    with col4:
+        st.metric("Server Status", "Online" if dashboard.connection_status else "Offline")
+    
+    st.markdown("---")
+    
+    # Features overview
+    st.subheader("🎯 Fitur Utama INTEND")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>🤖 Deteksi Ekspresi Wajah</h3>
+            <p>Analisis real-time 6 fitur geometris wajah dengan MediaPipe</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>🎤 Analisis Suara</h3>
+            <p>Speech-to-text + analisis sentimen dan gejala klinis</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>📊 Dashboard Real-time</h3>
+            <p>Monitoring data emosional pasien secara live</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>💬 Interaksi Empatik</h3>
+            <p>Respons AI yang personal berdasarkan kondisi emosional</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Recent activity
+    st.subheader("📈 Aktivitas Terkini")
+    
+    if patients:
+        # Show recent sessions
+        recent_sessions = []
+        for patient in patients[:3]:  # Limit to 3 patients
+            sessions = dashboard.get_patient_sessions(patient.get('patient_id'))
+            for session in sessions[:2]:  # Limit to 2 sessions per patient
+                recent_sessions.append({
+                    'patient': patient.get('nama', 'Unknown'),
+                    'session_id': session.get('session_id'),
+                    'date': session.get('start_time', '')[:10],
+                    'duration': f"{session.get('duration_seconds', 0) // 60}m",
+                    'dominant_emotion': session.get('dominant_emotion', 'unknown')
+                })
+        
+        if recent_sessions:
+            df_sessions = pd.DataFrame(recent_sessions)
+            st.dataframe(df_sessions, use_container_width=True)
+        else:
+            st.info("Belum ada sesi yang tercatat")
+    else:
+        st.info("Belum ada pasien terdaftar")
 
 def show_speech_analysis_detail(speech_data):
     """Tampilkan analisis detail speech recognition"""
@@ -237,7 +301,7 @@ def show_speech_analysis_detail(speech_data):
     with tab1:
         # Transkrip lengkap
         st.markdown("### 📝 Transkrip Percakapan")
-        transcript = speech_data.get("transkrip_lengkap", "")
+        transcript = speech_data.get("transcript", "")
         if transcript:
             st.markdown(f'<div class="speech-transcript">{transcript}</div>', unsafe_allow_html=True)
         else:
@@ -246,35 +310,35 @@ def show_speech_analysis_detail(speech_data):
     with tab2:
         # Analisis sentimen
         st.markdown("### 🔍 Analisis Sentimen")
-        sentiment = speech_data.get("analisis_sentimen", {})
+        sentiment = speech_data.get("sentiment_analysis", {})
         if sentiment:
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                score = sentiment.get("skor", 0)
-                st.metric("Skor Sentimen", f"{score:.2f}")
+                score = sentiment.get("sentiment_score", 0)
+                st.metric("Skor Sentimen", f"{score:.3f}")
                 
                 # Progress bar sentiment
                 sentiment_progress = (score + 1) / 2  # Convert -1 to 1 range to 0 to 1
                 st.progress(sentiment_progress)
                 
-                category = sentiment.get("kategori", "Tidak diketahui")
+                category = sentiment.get("sentiment_category", "Tidak diketahui")
                 st.write(f"**Kategori:** {category}")
             
             with col2:
-                positive = sentiment.get("kata_positif", 0)
+                positive = sentiment.get("positive_words", 0)
                 st.metric("Kata Positif", positive)
             
             with col3:
-                negative = sentiment.get("kata_negatif", 0)
+                negative = sentiment.get("negative_words", 0)
                 st.metric("Kata Negatif", negative)
             
             with col4:
-                neutral = sentiment.get("kata_netral", 0)
-                st.metric("Kata Netral", neutral)
+                total_words = sentiment.get("word_count", 0)
+                st.metric("Total Kata", total_words)
             
             # Sentiment chart
-            sentiment_counts = [positive, negative, neutral]
+            sentiment_counts = [positive, negative, total_words - positive - negative]
             sentiment_labels = ['Positif', 'Negatif', 'Netral']
             
             fig_sentiment = px.pie(
@@ -295,7 +359,7 @@ def show_speech_analysis_detail(speech_data):
     with tab3:
         # Analisis gejala klinis
         st.markdown("### 🩺 Gejala Klinis Terdeteksi")
-        symptoms = speech_data.get("gejala_terdeteksi", {})
+        symptoms = sentiment.get("detected_symptoms", {})
         if symptoms:
             # Convert to DataFrame untuk visualisasi
             symptoms_df = pd.DataFrame({
@@ -329,233 +393,328 @@ def show_speech_analysis_detail(speech_data):
     with tab4:
         # Analisis pola bicara
         st.markdown("### 🗣️ Analisis Pola Bicara")
-        speech_patterns = speech_data.get("pola_bicara", {})
-        if speech_patterns:
-            col1, col2, col3 = st.columns(3)
+        total_words = sentiment.get("word_count", 0)
+        
+        if total_words > 0:
+            col1, col2 = st.columns(2)
             
             with col1:
-                wpm = speech_patterns.get("kata_per_menit", 0)
-                st.metric("Kata per Menit", wpm)
+                st.metric("Total Kata", total_words)
                 
-                # WPM indicator
-                if wpm < 50:
-                    st.info("⏱️ Kecepatan bicara: Lambat")
-                elif wpm < 80:
-                    st.success("⏱️ Kecepatan bicara: Normal") 
+                # Word count indicator
+                if total_words < 50:
+                    st.warning("⏱️ Pasien sedikit bicara")
+                elif total_words < 200:
+                    st.success("⏱️ Pola bicara normal")
                 else:
-                    st.warning("⏱️ Kecepatan bicara: Cepat")
+                    st.info("⏱️ Pasien banyak bicara")
             
             with col2:
-                speed = speech_patterns.get("kecepatan_bicara", "Tidak diketahui")
-                st.metric("Kecepatan Bicara", speed)
-            
-            with col3:
-                pause_freq = speech_patterns.get("frekuensi_jeda", "Tidak diketahui")
-                st.metric("Frekuensi Jeda", pause_freq)
+                speaking_rate = total_words / 10  # Assuming 10 minutes session
+                st.metric("Perkiraan Kata/menit", f"{speaking_rate:.1f}")
             
             # Speech pattern insights
             st.markdown("#### 💡 Insight Pola Bicara")
-            if speech_patterns.get("kecepatan_bicara") == "Lambat":
-                st.info("Pola bicara lambat dapat mengindikasikan fatigue atau depresi")
-            if speech_patterns.get("frekuensi_jeda") == "Tinggi":
-                st.info("Frekuensi jeda yang tinggi dapat mengindikasikan kesulitan konsentrasi")
+            if total_words < 30:
+                st.info("Pasien mungkin mengalami kesulitan mengekspresikan perasaan")
+            elif sentiment.get("negative_words", 0) > sentiment.get("positive_words", 0) * 2:
+                st.warning("Percakapan didominasi oleh kata-kata negatif")
         else:
             st.info("Analisis pola bicara belum tersedia")
 
 def show_dashboard():
-    """Dashboard Psikolog"""
+    """Dashboard Psikolog - Monitoring Pasien"""
     st.title("👨‍⚕️ Dashboard Psikolog INTEND")
-    st.markdown("Analisis emosional mendetail untuk setiap pasien")
-
+    st.markdown("Monitoring dan analisis data pasien secara real-time")
+    
+    # Dapatkan data pasien dari server
+    patients = dashboard.get_patients()
+    
+    if not patients:
+        st.warning("Tidak ada data pasien yang ditemukan. Pastikan server lokal berjalan dan ada pasien terdaftar.")
+        return
+    
+    # Buat mapping untuk dropdown
+    patient_options = {f"{p.get('nama', 'Unknown')} (ID: {p.get('patient_id', 'N/A')})": p for p in patients}
+    
     # Sidebar navigation
-    st.sidebar.header("Navigasi Pasien")
-    selected_patient = st.sidebar.selectbox(
+    st.sidebar.header("🎯 Navigasi Pasien")
+    selected_patient_label = st.sidebar.selectbox(
         "Pilih Pasien:",
-        options=list(MOCK_DATABASE.keys())
+        options=list(patient_options.keys())
     )
-
-    if not selected_patient:
+    
+    if not selected_patient_label:
         st.info("Pilih pasien dari sidebar.")
         return
-
-    patient_data = MOCK_DATABASE[selected_patient]
-    sessions = _sorted_session_keys(patient_data)
-
+    
+    selected_patient = patient_options[selected_patient_label]
+    patient_id = selected_patient.get('patient_id')
+    
+    # Dapatkan sesi pasien
+    sessions = dashboard.get_patient_sessions(patient_id)
+    
+    # Tampilkan info pasien
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Nama Pasien", selected_patient.get('nama', 'Unknown'))
+    with col2:
+        st.metric("Usia", selected_patient.get('usia', 'N/A'))
+    with col3:
+        st.metric("Total Sesi", len(sessions))
+    
+    st.markdown("---")
+    
     if not sessions:
         st.info("Belum ada sesi untuk pasien ini.")
         return
-
-    selected_session_date = st.sidebar.selectbox(
-        "Pilih Tanggal Sesi:",
-        options=sessions,
-        index=0
+    
+    # Pilih sesi
+    session_options = {s.get('session_id'): s for s in sessions}
+    selected_session_id = st.sidebar.selectbox(
+        "Pilih Sesi:",
+        options=list(session_options.keys())
     )
-
-    # Main content
-    col_main, col_side = st.columns([2, 1])
-
-    with col_main:
-        st.header(f"Profil: {selected_patient}")
-        demografi = patient_data.get("demografi", {})
-        st.write(f"**Usia:** {demografi.get('usia', 'N/A')} tahun")
-        st.write(f"**Jenis Kelamin:** {demografi.get('jenis_kelamin', 'N/A')}")
-        st.write(f"**Pekerjaan:** {demografi.get('pekerjaan', 'N/A')}")
-        st.write(f"**Terapi dimulai:** {demografi.get('tanggal_mulai', 'N/A')}")
-
-    with col_side:
-        st.header("Statistik Ringkas")
-        total_sessions = len(sessions)
-        st.metric("Total Sesi", total_sessions)
-
-        # latest session by sorted order
-        latest_key = sessions[0] if sessions else None
-        if latest_key:
-            latest_session = patient_data.get(latest_key, {})
-            st.metric("Emosi Terakhir", latest_session.get("emosi_dominan", "N/A"))
-
-    st.markdown("---")
-
+    
     # Session analysis
-    if selected_session_date:
-        session_data = patient_data.get(selected_session_date, {})
-        st.header(f"Analisis Sesi: {selected_session_date}")
-
-        # Key metrics - DIUBAH: Hapus intensitas suara
-        mcol1, mcol2, mcol3 = st.columns(3)
-        mcol1.metric("Emosi Dominan", session_data.get("emosi_dominan", "N/A"))
+    if selected_session_id:
+        # Dapatkan data sesi dari server
+        with st.spinner("Memuat data sesi..."):
+            server_session_data = dashboard.get_session_data(selected_session_id)
         
-        # Format skor sentimen
-        try:
-            sentiment = session_data.get("skor_sentimen")
-            sentiment_str = f"{sentiment:.2f}" if isinstance(sentiment, (int, float)) else str(sentiment)
-        except Exception:
-            sentiment_str = str(session_data.get("skor_sentimen", "N/A"))
-        mcol2.metric("Skor Sentimen", sentiment_str)
-        mcol3.metric("Durasi Sesi", session_data.get("durasi_sesi", "N/A"))
-
-        # Visualization row
-        vcol1, vcol2 = st.columns(2)
-
-        with vcol1:
-            # Emotion distribution chart
-            st.subheader("Distribusi Ekspresi Wajah")
-            emotion_data = session_data.get("deteksi_wajah", {})
-            if emotion_data:
-                fig = px.pie(
-                    values=list(emotion_data.values()),
-                    names=list(emotion_data.keys()),
-                    color=list(emotion_data.keys()),
-                    color_discrete_map={
-                        'senang': '#2ecc71',
-                        'sedih': '#3498db',
-                        'netral': '#95a5a6',
-                        'marah': '#e74c3c'
-                    }
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("Tidak ada data deteksi wajah untuk sesi ini.")
-
-        with vcol2:
-            # Kata kunci text analysis (tags + bar chart)
-            st.subheader("Kata Kunci Dominan")
-            text = session_data.get("analisis_suara", {}).get("kata_kunci", "")
-            if isinstance(text, str) and text.strip():
-                words = text.split()
-                word_counts = {}
-                for word in words:
-                    normalized = word.strip().lower()
-                    if not normalized:
-                        continue
-                    word_counts[normalized] = word_counts.get(normalized, 0) + 1
-
-                if word_counts:
-                    # Top words
-                    sorted_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-
-                    tags_html = "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0;'>"
-                    for word, count in sorted_words:
-                        size = min(12 + count * 3, 28)  # font-size in px (more reasonable)
-                        tags_html += f"""
-                        <span style='
-                            background: #3498db;
-                            color: white;
-                            padding: 6px 10px;
-                            border-radius: 12px;
-                            font-size: {size}px;
-                            font-weight: 600;
-                        '>{word} ({count})</span>
-                        """
-                    tags_html += "</div>"
-
-                    st.markdown(tags_html, unsafe_allow_html=True)
-
-                    # Bar chart
-                    words_df = pd.DataFrame(sorted_words, columns=['Kata', 'Frekuensi'])
-                    fig_bar = px.bar(
-                        words_df,
-                        x='Kata',
-                        y='Frekuensi',
-                        title="Frekuensi Kata Kunci",
-                        color='Frekuensi'
+        if server_session_data:
+            selected_session = session_options[selected_session_id]
+            
+            st.header(f"📊 Analisis Sesi: {selected_session_id}")
+            st.write(f"**Waktu Sesi:** {selected_session.get('start_time', 'N/A')}")
+            st.write(f"**Durasi:** {selected_session.get('duration_seconds', 0) // 60} menit")
+            
+            # Key metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                dominant_emotion = selected_session.get('dominant_emotion', 'unknown')
+                st.metric("Emosi Dominan", dominant_emotion)
+            
+            with col2:
+                avg_sentiment = selected_session.get('average_sentiment', 0)
+                st.metric("Rata-rata Sentimen", f"{avg_sentiment:.3f}")
+            
+            with col3:
+                total_face = selected_session.get('total_face_data', 0)
+                st.metric("Data Ekspresi", total_face)
+            
+            with col4:
+                total_speech = selected_session.get('total_speech_data', 0)
+                st.metric("Data Percakapan", total_speech)
+            
+            # Visualization row
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Emotion distribution chart
+                st.subheader("📈 Distribusi Ekspresi Wajah")
+                emotion_dist = selected_session.get('emotion_distribution', {})
+                if emotion_dist:
+                    fig_emotion = px.pie(
+                        values=list(emotion_dist.values()),
+                        names=list(emotion_dist.keys()),
+                        title="Persentase Ekspresi Wajah",
+                        color=list(emotion_dist.keys()),
+                        color_discrete_map={
+                            'happy': '#2ecc71',
+                            'sad': '#3498db',
+                            'angry': '#e74c3c',
+                            'neutral': '#95a5a6',
+                            'calm': '#9b59b6'
+                        }
                     )
-                    st.plotly_chart(fig_bar, use_container_width=True)
+                    st.plotly_chart(fig_emotion, use_container_width=True)
                 else:
-                    st.info("Tidak ada kata kunci yang cukup untuk ditampilkan.")
+                    st.info("Tidak ada data distribusi emosi")
+            
+            with col2:
+                # Key insights
+                st.subheader("💡 Insights Klinis")
+                insights = selected_session.get('key_insights', [])
+                if insights:
+                    for insight in insights:
+                        st.info(f"• {insight}")
+                else:
+                    st.info("Tidak ada insights yang tersedia untuk sesi ini")
+            
+            # Speech analysis section
+            speech_data_list = server_session_data.get('speech_data', [])
+            if speech_data_list:
+                st.markdown("---")
+                st.subheader("🎤 Analisis Percakapan")
+                
+                # Tampilkan transcript terbaru
+                latest_speech = speech_data_list[-1] if speech_data_list else {}
+                show_speech_analysis_detail(latest_speech)
+            
+            # File access section
+            st.markdown("---")
+            st.subheader("📁 Akses File Data Mentah")
+            
+            with st.spinner("Memuat daftar file..."):
+                session_files = dashboard.get_session_files(selected_session_id)
+            
+            if session_files:
+                col1, col2, col3 = st.columns(3)
+                
+                # Face data files
+                with col1:
+                    st.write("**Data Ekspresi Wajah:**")
+                    face_files = session_files.get('face', [])
+                    for file in face_files[:3]:  # Show first 3 files
+                        st.write(f"• {file['filename']}")
+                
+                # Speech data files  
+                with col2:
+                    st.write("**Data Percakapan:**")
+                    speech_files = session_files.get('speech', [])
+                    for file in speech_files[:3]:
+                        st.write(f"• {file['filename']}")
+                
+                # Session summary
+                with col3:
+                    st.write("**Summary Sesi:**")
+                    summary_files = session_files.get('session_summary', [])
+                    for file in summary_files:
+                        st.write(f"• {file['filename']}")
+                
+                # Download buttons
+                st.markdown("---")
+                st.subheader("📥 Download Data")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("📊 Download Summary JSON", key="download_summary"):
+                        if summary_files:
+                            file_url = f"{SERVER_URL}{summary_files[0]['download_url']}"
+                            st.markdown(f'[Download Summary]({file_url})', unsafe_allow_html=True)
+                
+                with col2:
+                    if st.button("🎭 Download Data Ekspresi", key="download_face"):
+                        if face_files:
+                            # Create a combined download link or individual
+                            st.info("Gunakan link di atas untuk download file individual")
+                
+                with col3:
+                    if st.button("🗣️ Download Data Percakapan", key="download_speech"):
+                        if speech_files:
+                            st.info("Gunakan link di atas untuk download file individual")
+            
             else:
-                st.info("Tidak ada kata kunci yang cukup untuk ditampilkan.")
-
-        st.markdown("---")
+                st.info("Tidak ada file data yang tersedia untuk sesi ini")
         
-        # SPEECH ANALYSIS DETAIL SECTION - BARU
-        speech_data = session_data.get("analisis_suara", {})
-        if speech_data:
-            show_speech_analysis_detail(speech_data)
         else:
-            st.info("Analisis percakapan belum tersedia untuk sesi ini")
+            st.error("Gagal memuat data sesi dari server")
 
-        # Raw file access
-        st.subheader("🗂️ Akses File Mentah Sesi")
-        col_vid, col_aud, col_txt, col_data = st.columns(4)  # TAMBAH kolom data teknis
-
-        file_data = session_data.get("file_mentah", {})
-        vid_url = file_data.get("video")
-        aud_url = file_data.get("audio")
-        txt_url = file_data.get("transkrip")
-        data_url = file_data.get("data_teknis")
-
-        if vid_url:
-            col_vid.markdown(f'<a href="{vid_url}" target="_blank">🎬 Rekaman Video</a>', unsafe_allow_html=True)
+def show_realtime_monitoring():
+    """Real-time Monitoring untuk Sesi Aktif"""
+    st.title("🔴 Monitoring Real-time INTEND")
+    st.markdown("Monitor sesi terapi yang sedang berlangsung secara live")
+    
+    # Cek sesi aktif
+    try:
+        health_response = requests.get(f"{SERVER_URL}/api/health", timeout=5)
+        if health_response.status_code == 200:
+            active_sessions_count = health_response.json().get('active_sessions', 0)
+            
+            if active_sessions_count == 0:
+                st.info("Tidak ada sesi aktif yang berjalan.")
+                st.write("Pastikan INTEND Doll sedang digunakan untuk sesi terapi.")
+                return
+            
+            st.success(f"🎯 {active_sessions_count} sesi aktif terdeteksi")
+            
+            # Untuk simplicity, monitor session pertama yang aktif
+            # Dalam implementasi real, kita perlu mendapatkan list session aktif
+            patients = dashboard.get_patients()
+            if patients:
+                # Cari sesi aktif untuk pasien pertama
+                patient_id = patients[0].get('patient_id')
+                sessions = dashboard.get_patient_sessions(patient_id)
+                
+                if sessions:
+                    latest_session = sessions[0]  # Asumsi session terbaru adalah yang aktif
+                    session_id = latest_session.get('session_id')
+                    
+                    # Real-time monitoring
+                    st.subheader(f"📊 Live Monitoring - Sesi: {session_id}")
+                    
+                    # Auto-refresh
+                    refresh = st.checkbox("🔄 Auto-refresh setiap 5 detik", value=True)
+                    
+                    if refresh:
+                        st.write("**Data akan diperbarui otomatis...**")
+                        
+                        # Placeholder untuk real-time data
+                        placeholder = st.empty()
+                        
+                        # Simulasi real-time updates
+                        for i in range(10):  # Refresh 10 kali
+                            if refresh:
+                                with placeholder.container():
+                                    # Get real-time analytics
+                                    realtime_data = dashboard.get_realtime_analytics(session_id)
+                                    
+                                    if realtime_data:
+                                        col1, col2, col3, col4 = st.columns(4)
+                                        
+                                        with col1:
+                                            emotion = realtime_data.get('latest_emotion', 'unknown')
+                                            st.metric("Emosi Terkini", emotion)
+                                        
+                                        with col2:
+                                            sentiment = realtime_data.get('latest_sentiment', 0)
+                                            st.metric("Sentimen", f"{sentiment:.3f}")
+                                        
+                                        with col3:
+                                            face_data = realtime_data.get('total_face_data', 0)
+                                            st.metric("Data Wajah", face_data)
+                                        
+                                        with col4:
+                                            speech_data = realtime_data.get('total_speech_data', 0)
+                                            st.metric("Data Percakapan", speech_data)
+                                        
+                                        # Emotion timeline
+                                        st.subheader("📈 Timeline Emosi")
+                                        emotion_timeline = realtime_data.get('emotion_timeline', [])
+                                        if emotion_timeline:
+                                            timeline_df = pd.DataFrame({
+                                                'Waktu': range(len(emotion_timeline)),
+                                                'Emosi': emotion_timeline
+                                            })
+                                            fig_timeline = px.line(timeline_df, x='Waktu', y='Emosi', 
+                                                                 title='Perubahan Emosi 10 Detik Terakhir')
+                                            st.plotly_chart(fig_timeline, use_container_width=True)
+                                    
+                                    time.sleep(5)  # Refresh every 5 seconds
+                            else:
+                                break
+                    else:
+                        st.info("Aktifkan auto-refresh untuk monitoring real-time")
+            
         else:
-            col_vid.write("—")
-
-        if aud_url:
-            col_aud.markdown(f'<a href="{aud_url}" target="_blank">🎧 Audio Sesi</a>', unsafe_allow_html=True)
-        else:
-            col_aud.write("—")
-
-        if txt_url:
-            col_txt.markdown(f'<a href="{txt_url}" target="_blank">📄 Transkrip Lengkap</a>', unsafe_allow_html=True)
-        else:
-            col_txt.write("—")
-
-        if data_url:
-            col_data.markdown(f'<a href="{data_url}" target="_blank">📊 Data Teknis</a>', unsafe_allow_html=True)
-        else:
-            col_data.write("—")
-
-# ... (fungsi show_about dan show_home tetap sama seperti sebelumnya)
+            st.error("Tidak dapat terhubung ke server")
+    
+    except Exception as e:
+        st.error(f"Error monitoring real-time: {str(e)}")
 
 def show_about():
     """Halaman Tentang INTEND"""
     st.title("🤖 Tentang INTEND")
     st.markdown("Intelligence Doll untuk Kesehatan Mental Generasi Z")
-
+    
     # Problem statement
     st.header("🎯 Latar Belakang Masalah")
-
+    
     col1, col2 = st.columns(2)
-
+    
     with col1:
         st.subheader("Fakta Mengkhawatirkan")
         st.write("""
@@ -565,7 +724,7 @@ def show_about():
         - **45%** terkendala biaya
         - **24%** tidak tahu cara akses layanan
         """)
-
+    
     with col2:
         st.subheader("Solusi Konvensional")
         st.write("""
@@ -573,12 +732,12 @@ def show_about():
         - Terapi tradisional: Bergantung pada **laporan retrospektif** yang bias
         - Kurangnya **interaksi manusiawi** dan **dukungan personal**
         """)
-
+    
     st.markdown("---")
-
+    
     # INTEND Solution
     st.header("💡 Solusi INTEND")
-
+    
     st.write("""
     **INTEND (Intelligence Doll)** menghadirkan solusi inovatif dengan mengintegrasikan:
     - **AI Emotion Detection** - Deteksi ekspresi wajah real-time
@@ -586,12 +745,17 @@ def show_about():
     - **Empathic Interaction** - Respons AI yang personal
     - **Clinical Dashboard** - Monitoring untuk psikolog
     """)
-
+    
+    # Architecture diagram
+    st.subheader("🏗️ Arsitektur Sistem")
+    st.image("https://via.placeholder.com/800x400/3498db/ffffff?text=INTEND+System+Architecture", 
+             caption="Arsitektur Client-Server INTEND")
+    
     # Specifications
     st.header("🔧 Spesifikasi Teknis")
-
+    
     col1, col2 = st.columns(2)
-
+    
     with col1:
         st.subheader("Spesifikasi Fisik")
         st.write("""
@@ -600,7 +764,7 @@ def show_about():
         - **Material Eksterior**: Kain Rasfur
         - **Material Interior**: Bahan Cetak 3D
         """)
-
+    
     with col2:
         st.subheader("Spesifikasi Elektronik")
         st.write("""
@@ -610,95 +774,43 @@ def show_about():
         - **Daya**: Power Bank 10000mAh
         """)
 
-
-def show_home():
-    """Dashboard Utama"""
-    st.markdown('<h1 class="main-header">INTEND</h1>', unsafe_allow_html=True)
-    st.markdown('<h2 class="sub-header">Intelligence Doll untuk Kesehatan Mental Generasi Z</h2>', unsafe_allow_html=True)
-
-    # Quick stats
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric("Total Pasien", len(MOCK_DATABASE))
-
-    with col2:
-        total_sessions = sum(len([k for k in pdict.keys() if k != "demografi"]) for pdict in MOCK_DATABASE.values())
-        st.metric("Total Sesi", total_sessions)
-
-    with col3:
-        st.metric("Akurasi Deteksi Wajah", "90%")
-
-    with col4:
-        st.metric("Akurasi Voice-to-Text", "98%")
-
+def main():
+    """Main function"""
+    # Sidebar navigation
+    st.sidebar.title("🧭 Navigasi INTEND")
+    
+    # Show connection status
+    show_connection_status()
+    
+    # Main page selection
+    page = st.sidebar.radio(
+        "Pilih Halaman:", 
+        [
+            "🏠 Dashboard Utama",
+            "📊 Dashboard Psikolog", 
+            "🔴 Monitoring Real-time",
+            "🤖 Tentang INTEND"
+        ]
+    )
+    
+    # Page routing
+    if page == "🏠 Dashboard Utama":
+        show_home()
+    elif page == "📊 Dashboard Psikolog":
+        show_dashboard()
+    elif page == "🔴 Monitoring Real-time":
+        show_realtime_monitoring()
+    elif page == "🤖 Tentang INTEND":
+        show_about()
+    
+    # Footer
     st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: #7f8c8d;'>"
+        "INTEND - Intelligence Doll © 2025 | Universitas Airlangga"
+        "</div>",
+        unsafe_allow_html=True
+    )
 
-    # Features overview
-    st.subheader("🎯 Fitur Utama INTEND")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        with st.container():
-            st.markdown("""
-            <div class="feature-card">
-                <h3>🤖 Deteksi Ekspresi Wajah</h3>
-                <p>Analisis real-time 6 fitur geometris wajah dengan akurasi 90%</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-    with col2:
-        with st.container():
-            st.markdown("""
-            <div class="feature-card">
-                <h3>🎤 Analisis Suara</h3>
-                <p>Speech-to-text 98% akurat + analisis leksikal gejala depresi</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-    with col3:
-        with st.container():
-            st.markdown("""
-            <div class="feature-card">
-                <h3>📊 Dashboard Psikolog</h3>
-                <p>Monitoring data emosional pasien secara real-time</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-    with col4:
-        with st.container():
-            st.markdown("""
-            <div class="feature-card">
-                <h3>💬 Interaksi Empatik</h3>
-                <p>Respons AI yang personal berdasarkan kondisi emosional</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-
-# Sidebar navigation
-st.sidebar.title("🧭 Navigasi INTEND")
-
-# Main page selection
-page = st.sidebar.radio("Pilih Halaman:", [
-    "🏠 Dashboard Utama",
-    "📊 Dashboard Psikolog",
-    "🤖 Tentang INTEND"
-])
-
-# Route to selected page
-if page == "🏠 Dashboard Utama":
-    show_home()
-elif page == "📊 Dashboard Psikolog":
-    show_dashboard()
-elif page == "🤖 Tentang INTEND":
-    show_about()
-
-# Footer
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: #7f8c8d;'>"
-    "INTEND - Intelligence Doll © 2025 | Universitas Airlangga"
-    "</div>",
-    unsafe_allow_html=True
-)
+if __name__ == "__main__":
+    main()
