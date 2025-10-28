@@ -1,18 +1,8 @@
-# Recommended Python version: 3.8 - 3.11
-
-# Core dependencies
+# INTEND Dashboard Requirements - Streamlit Cloud Compatible
 streamlit==1.28.0
-pandas==2.0.3
+pandas==2.0.2
 numpy==1.24.3
-matplotlib==3.7.2
 plotly==5.15.0
+matplotlib==3.7.1
 requests==2.31.0
-
-# Optional extras (for wordcloud visuals)
-wordcloud==1.8.2
-Pillow==9.4.0
-
-# Lock file note:
-# For exact reproducibility, run:
-# pip freeze > requirements.txt
-# and commit that output instead of these loose ranges.
+protobuf==3.20.3
