@@ -50,10 +50,17 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         margin: 0.5rem;
     }
+    .speech-transcript {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 4px solid #e74c3c;
+        margin: 0.5rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Mock database untuk demo
+# Mock database - DIUBAH sesuai structure data real dari client
 MOCK_DATABASE = {
     "Bpk. Budi Setiawan": {
         "demografi": {
@@ -73,14 +80,39 @@ MOCK_DATABASE = {
                 "marah": 0.08
             },
             "analisis_suara": {
+                "transkrip_lengkap": """
+                [10:00:15] Saya merasa sangat lelah akhir-akhir ini
+                [10:00:22] Sering bangun tengah malam dan susah tidur lagi
+                [10:00:35] Rasanya semua jadi hampa dan nggak ada semangat
+                [10:00:45] Capek banget, kayak beban terus aja
+                [10:01:02] Kadang merasa sendirian meskipun ada orang sekitar
+                """,
                 "kata_kunci": "lelah hampa beban capek sendirian nggak berguna kosong capek lelah hampa beban nggak minat bodoh lelah capek beban hampa",
-                "intensitas": "Tinggi",
-                "kecepatan_bicara": "Lambat"
+                "analisis_sentimen": {
+                    "skor": -0.72,
+                    "kategori": "Negatif",
+                    "kata_positif": 2,
+                    "kata_negatif": 15,
+                    "kata_netral": 8
+                },
+                "gejala_terdeteksi": {
+                    "fatigue": 8,
+                    "insomnia": 3,
+                    "loneliness": 5,
+                    "hopelessness": 4,
+                    "anhedonia": 3
+                },
+                "pola_bicara": {
+                    "kata_per_menit": 42,
+                    "kecepatan_bicara": "Lambat",
+                    "frekuensi_jeda": "Tinggi"
+                }
             },
             "file_mentah": {
                 "video": "https://link-ke-cloud.com/pasienA_20251017.mp4",
                 "audio": "https://link-ke-cloud.com/pasienA_20251017.wav",
-                "transkrip": "https://link-ke-cloud.com/pasienA_20251017.txt"
+                "transkrip": "https://link-ke-cloud.com/pasienA_20251017.txt",
+                "data_teknis": "https://link-ke-cloud.com/pasienA_20251017.json"
             }
         },
         "2025-10-16": {
@@ -94,21 +126,43 @@ MOCK_DATABASE = {
                 "marah": 0.10
             },
             "analisis_suara": {
+                "transkrip_lengkap": """
+                [09:30:10] Hari ini biasa aja sih
+                [09:30:25] Cuma agak mager dan bosen
+                [09:30:40] Tugas kuliah numpuk terus
+                [09:30:55] Tapi masih bisa dikerjain kok
+                """,
                 "kata_kunci": "biasa aja mager bosen tugas kuliah capek",
-                "intensitas": "Sedang",
-                "kecepatan_bicara": "Normal"
+                "analisis_sentimen": {
+                    "skor": -0.15,
+                    "kategori": "Netral",
+                    "kata_positif": 3,
+                    "kata_negatif": 4,
+                    "kata_netral": 6
+                },
+                "gejala_terdeteksi": {
+                    "fatigue": 4,
+                    "academic_stress": 3,
+                    "boredom": 2
+                },
+                "pola_bicara": {
+                    "kata_per_menit": 65,
+                    "kecepatan_bicara": "Normal", 
+                    "frekuensi_jeda": "Sedang"
+                }
             },
             "file_mentah": {
                 "video": "https://link-ke-cloud.com/pasienA_20251016.mp4",
                 "audio": "https://link-ke-cloud.com/pasienA_20251016.wav",
-                "transkrip": "https://link-ke-cloud.com/pasienA_20251016.txt"
+                "transkrip": "https://link-ke-cloud.com/pasienA_20251016.txt",
+                "data_teknis": "https://link-ke-cloud.com/pasienA_20251016.json"
             }
         }
     },
     "Ibu Citra Wahyuningsih": {
         "demografi": {
             "usia": 21,
-            "jenis_kelamin": "Perempuan",
+            "jenis_kelamin": "Perempuan", 
             "pekerjaan": "Mahasiswi",
             "tanggal_mulai": "2025-09-15"
         },
@@ -123,19 +177,39 @@ MOCK_DATABASE = {
                 "marah": 0.05
             },
             "analisis_suara": {
-                "kata_kunci": "nggak apa-apa udah lebih baik tugas selesai",
-                "intensitas": "Rendah",
-                "kecepatan_bicara": "Normal"
+                "transkrip_lengkap": """
+                [11:15:05] Nggak apa-apa kok, udah lebih baik
+                [11:15:18] Tugas akhirnya udah selesai
+                [11:15:30] Sekarang tinggal nunggu sidang aja
+                [11:15:45] Lumayan lega sih akhirnya
+                """,
+                "kata_kunci": "nggak apa-apa udah lebih baik tugas selesai lega sidang",
+                "analisis_sentimen": {
+                    "skor": 0.05,
+                    "kategori": "Netral",
+                    "kata_positif": 5,
+                    "kata_negatif": 1,
+                    "kata_netral": 7
+                },
+                "gejala_terdeteksi": {
+                    "academic_stress": 2,
+                    "relief": 3
+                },
+                "pola_bicara": {
+                    "kata_per_menit": 70,
+                    "kecepatan_bicara": "Normal",
+                    "frekuensi_jeda": "Rendah"
+                }
             },
             "file_mentah": {
                 "video": "https://link-ke-cloud.com/pasienB_20251017.mp4",
                 "audio": "https://link-ke-cloud.com/pasienB_20251017.wav",
-                "transkrip": "https://link-ke-cloud.com/pasienB_20251017.txt"
+                "transkrip": "https://link-ke-cloud.com/pasienB_20251017.txt",
+                "data_teknis": "https://link-ke-cloud.com/pasienB_20251017.json"
             }
         }
     }
 }
-
 
 def _sorted_session_keys(patient_data):
     """
@@ -153,6 +227,140 @@ def _sorted_session_keys(patient_data):
     except Exception:
         return session_keys
 
+def show_speech_analysis_detail(speech_data):
+    """Tampilkan analisis detail speech recognition"""
+    st.subheader("🎤 Analisis Percakapan Detail")
+    
+    # Tab untuk berbagai analisis
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Transkrip", "🔍 Analisis Sentimen", "🩺 Gejala Klinis", "🗣️ Pola Bicara"])
+    
+    with tab1:
+        # Transkrip lengkap
+        st.markdown("### 📝 Transkrip Percakapan")
+        transcript = speech_data.get("transkrip_lengkap", "")
+        if transcript:
+            st.markdown(f'<div class="speech-transcript">{transcript}</div>', unsafe_allow_html=True)
+        else:
+            st.info("Tidak ada transkrip yang tersedia")
+    
+    with tab2:
+        # Analisis sentimen
+        st.markdown("### 🔍 Analisis Sentimen")
+        sentiment = speech_data.get("analisis_sentimen", {})
+        if sentiment:
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                score = sentiment.get("skor", 0)
+                st.metric("Skor Sentimen", f"{score:.2f}")
+                
+                # Progress bar sentiment
+                sentiment_progress = (score + 1) / 2  # Convert -1 to 1 range to 0 to 1
+                st.progress(sentiment_progress)
+                
+                category = sentiment.get("kategori", "Tidak diketahui")
+                st.write(f"**Kategori:** {category}")
+            
+            with col2:
+                positive = sentiment.get("kata_positif", 0)
+                st.metric("Kata Positif", positive)
+            
+            with col3:
+                negative = sentiment.get("kata_negatif", 0)
+                st.metric("Kata Negatif", negative)
+            
+            with col4:
+                neutral = sentiment.get("kata_netral", 0)
+                st.metric("Kata Netral", neutral)
+            
+            # Sentiment chart
+            sentiment_counts = [positive, negative, neutral]
+            sentiment_labels = ['Positif', 'Negatif', 'Netral']
+            
+            fig_sentiment = px.pie(
+                values=sentiment_counts,
+                names=sentiment_labels,
+                title="Distribusi Kata Berdasarkan Sentimen",
+                color=sentiment_labels,
+                color_discrete_map={
+                    'Positif': '#2ecc71',
+                    'Negatif': '#e74c3c', 
+                    'Netral': '#3498db'
+                }
+            )
+            st.plotly_chart(fig_sentiment, use_container_width=True)
+        else:
+            st.info("Analisis sentimen belum tersedia")
+    
+    with tab3:
+        # Analisis gejala klinis
+        st.markdown("### 🩺 Gejala Klinis Terdeteksi")
+        symptoms = speech_data.get("gejala_terdeteksi", {})
+        if symptoms:
+            # Convert to DataFrame untuk visualisasi
+            symptoms_df = pd.DataFrame({
+                'Gejala': list(symptoms.keys()),
+                'Frekuensi': list(symptoms.values())
+            }).sort_values('Frekuensi', ascending=False)
+            
+            # Bar chart gejala
+            fig_symptoms = px.bar(
+                symptoms_df,
+                x='Gejala',
+                y='Frekuensi',
+                title="Frekuensi Gejala Klinis yang Terdeteksi",
+                color='Frekuensi'
+            )
+            st.plotly_chart(fig_symptoms, use_container_width=True)
+            
+            # Symptoms metrics
+            st.markdown("#### 📊 Metrik Gejala")
+            total_symptoms = sum(symptoms.values())
+            unique_symptoms = len(symptoms)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Deteksi Gejala", total_symptoms)
+            with col2:
+                st.metric("Jenis Gejala Unik", unique_symptoms)
+        else:
+            st.info("Tidak ada gejala klinis yang terdeteksi")
+    
+    with tab4:
+        # Analisis pola bicara
+        st.markdown("### 🗣️ Analisis Pola Bicara")
+        speech_patterns = speech_data.get("pola_bicara", {})
+        if speech_patterns:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                wpm = speech_patterns.get("kata_per_menit", 0)
+                st.metric("Kata per Menit", wpm)
+                
+                # WPM indicator
+                if wpm < 50:
+                    st.info("⏱️ Kecepatan bicara: Lambat")
+                elif wpm < 80:
+                    st.success("⏱️ Kecepatan bicara: Normal") 
+                else:
+                    st.warning("⏱️ Kecepatan bicara: Cepat")
+            
+            with col2:
+                speed = speech_patterns.get("kecepatan_bicara", "Tidak diketahui")
+                st.metric("Kecepatan Bicara", speed)
+            
+            with col3:
+                pause_freq = speech_patterns.get("frekuensi_jeda", "Tidak diketahui")
+                st.metric("Frekuensi Jeda", pause_freq)
+            
+            # Speech pattern insights
+            st.markdown("#### 💡 Insight Pola Bicara")
+            if speech_patterns.get("kecepatan_bicara") == "Lambat":
+                st.info("Pola bicara lambat dapat mengindikasikan fatigue atau depresi")
+            if speech_patterns.get("frekuensi_jeda") == "Tinggi":
+                st.info("Frekuensi jeda yang tinggi dapat mengindikasikan kesulitan konsentrasi")
+        else:
+            st.info("Analisis pola bicara belum tersedia")
 
 def show_dashboard():
     """Dashboard Psikolog"""
@@ -212,10 +420,11 @@ def show_dashboard():
         session_data = patient_data.get(selected_session_date, {})
         st.header(f"Analisis Sesi: {selected_session_date}")
 
-        # Key metrics
-        mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+        # Key metrics - DIUBAH: Hapus intensitas suara
+        mcol1, mcol2, mcol3 = st.columns(3)
         mcol1.metric("Emosi Dominan", session_data.get("emosi_dominan", "N/A"))
-        # protect numeric formatting
+        
+        # Format skor sentimen
         try:
             sentiment = session_data.get("skor_sentimen")
             sentiment_str = f"{sentiment:.2f}" if isinstance(sentiment, (int, float)) else str(sentiment)
@@ -223,7 +432,6 @@ def show_dashboard():
             sentiment_str = str(session_data.get("skor_sentimen", "N/A"))
         mcol2.metric("Skor Sentimen", sentiment_str)
         mcol3.metric("Durasi Sesi", session_data.get("durasi_sesi", "N/A"))
-        mcol4.metric("Intensitas Suara", session_data.get("analisis_suara", {}).get("intensitas", "N/A"))
 
         # Visualization row
         vcol1, vcol2 = st.columns(2)
@@ -297,14 +505,24 @@ def show_dashboard():
             else:
                 st.info("Tidak ada kata kunci yang cukup untuk ditampilkan.")
 
+        st.markdown("---")
+        
+        # SPEECH ANALYSIS DETAIL SECTION - BARU
+        speech_data = session_data.get("analisis_suara", {})
+        if speech_data:
+            show_speech_analysis_detail(speech_data)
+        else:
+            st.info("Analisis percakapan belum tersedia untuk sesi ini")
+
         # Raw file access
         st.subheader("🗂️ Akses File Mentah Sesi")
-        col_vid, col_aud, col_txt = st.columns(3)
+        col_vid, col_aud, col_txt, col_data = st.columns(4)  # TAMBAH kolom data teknis
 
         file_data = session_data.get("file_mentah", {})
         vid_url = file_data.get("video")
         aud_url = file_data.get("audio")
         txt_url = file_data.get("transkrip")
+        data_url = file_data.get("data_teknis")
 
         if vid_url:
             col_vid.markdown(f'<a href="{vid_url}" target="_blank">🎬 Rekaman Video</a>', unsafe_allow_html=True)
@@ -321,6 +539,12 @@ def show_dashboard():
         else:
             col_txt.write("—")
 
+        if data_url:
+            col_data.markdown(f'<a href="{data_url}" target="_blank">📊 Data Teknis</a>', unsafe_allow_html=True)
+        else:
+            col_data.write("—")
+
+# ... (fungsi show_about dan show_home tetap sama seperti sebelumnya)
 
 def show_about():
     """Halaman Tentang INTEND"""
