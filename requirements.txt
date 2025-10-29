@@ -20,3 +20,4 @@ tqdm==4.66.4
 # --- Optional (warnings, JSON, etc) ---
 certifi>=2024.2.2
 urllib3>=2.2.2
+import matplotlib.pyplot as plt
