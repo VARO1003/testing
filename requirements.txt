@@ -1,10 +1,19 @@
-streamlit
-fastapi
-uvicorn
-opencv-python-headless
-pandas
-numpy
-plotly
-requests
-mediapipe
-matplotlib
+# Core Streamlit & Dashboard
+streamlit==1.28.0
+pandas==2.1.1
+numpy==1.24.3
+
+# Visualization
+plotly==5.15.0
+altair==4.2.2
+
+# Data Handling & API
+requests==2.31.0
+urllib3==1.26.18
+
+# Date/Time Handling
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Optional (for future enhancements)
+pillow==10.0.1
