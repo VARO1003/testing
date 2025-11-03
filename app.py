@@ -1,51 +1,47 @@
 # -*- coding: utf-8 -*-
-# DASHBOARD PSIKOLOG INTEND v6.0 - Ambil Semua File JSON Otomatis dari Drive Publik
+# DASHBOARD PSIKOLOG INTEND v7.0 - Ambil JSON Otomatis dari Folder Publik
 # ---------------------------------------------------------------------------
 
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
-import json, os, glob
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+import json, os
+
+# Library untuk download file dari Google Drive publik
+import gdown
+import glob
 
 # ------------------ KONFIGURASI ------------------
 st.set_page_config(page_title="Dashboard Psikolog - INTEND", layout="wide")
-LOCAL_DATA_PATH = "logs_drive/"  # folder lokal untuk cache file JSON
+LOCAL_DATA_PATH = "logs_drive/"
 os.makedirs(LOCAL_DATA_PATH, exist_ok=True)
 
-# Google Drive folder publik
-# Isi dengan Folder ID saja: https://drive.google.com/drive/folders/<FOLDER_ID>
-DRIVE_FOLDER_ID = "19vfH8Nij2D5BDSrH9K16vkLVvIvX99na"
+# Folder publik Google Drive (Anyone with link)
+# Contoh: https://drive.google.com/drive/folders/<FOLDER_ID>
+# Gunakan link file langsung atau siapkan file_list.txt berisi URL file JSON
+DRIVE_FILE_LIST = [
+    # Ganti dengan link langsung file JSON publik
+    "https://drive.google.com/uc?id=FILE_ID_1",
+    "https://drive.google.com/uc?id=FILE_ID_2"
+]
 
 # ------------------ LOGIN SEDERHANA ------------------
 PASSWORD = "INTENDsecure"
 st.title("🔒 Login Tenaga Ahli INTEND")
 pwd_input = st.text_input("Masukkan password:", type="password")
-if pwd_input != PASSWORD:0000
+if pwd_input != PASSWORD:
     st.warning("Password salah! Hanya tenaga ahli yang bisa mengakses.")
     st.stop()
 st.success("✅ Login berhasil. Selamat datang!")
 
-# ------------------ FUNGSIONALITAS GOOGLE DRIVE ------------------
+# ------------------ DOWNLOAD FILE JSON OTOMATIS ------------------
 @st.cache_data
-def download_json_from_drive(folder_id, local_path):
-    """
-    Download semua file JSON dari folder publik Google Drive ke folder lokal.
-    Memakai PyDrive.
-    """
-    gauth = GoogleAuth()
-    gauth.LocalWebserverAuth()  # login pertama kali
-    drive = GoogleDrive(gauth)
-
-    # List semua file di folder
-    file_list = drive.ListFile({'q': f"'{folder_id}' in parents and trashed=false"}).GetList()
-    for file in file_list:
-        if file['title'].lower().endswith(".json"):
-            local_file = os.path.join(local_path, file['title'])
-            if not os.path.exists(local_file):
-                file.GetContentFile(local_file)
+def download_json_files(file_urls, local_path):
+    for url in file_urls:
+        filename = os.path.join(local_path, url.split("=")[-1] + ".json")
+        if not os.path.exists(filename):
+            gdown.download(url, filename, quiet=True)
 
 @st.cache_data
 def load_sessions_from_folder(folder_path):
@@ -61,12 +57,12 @@ def load_sessions_from_folder(folder_path):
             st.error(f"Gagal membaca {file}: {e}")
     return data
 
-# ------------------ AMBIL DATA DARI DRIVE ------------------
-download_json_from_drive(DRIVE_FOLDER_ID, LOCAL_DATA_PATH)
+# Ambil data
+download_json_files(DRIVE_FILE_LIST, LOCAL_DATA_PATH)
 MOCK_DATABASE = load_sessions_from_folder(LOCAL_DATA_PATH)
 
 if not MOCK_DATABASE:
-    st.info(f"Belum ada data sesi. Pastikan file JSON tersedia di Drive folder {DRIVE_FOLDER_ID}")
+    st.info("Belum ada data sesi. Pastikan file JSON tersedia di folder publik.")
     st.stop()
 
 # ------------------ SIDEBAR PASIEN ------------------
@@ -134,5 +130,5 @@ df_log = pd.DataFrame(log_data).sort_values(by=["Tanggal"], ascending=False)
 st.dataframe(df_log, use_container_width=True)
 
 st.markdown("---")
-st.caption("📁 Semua file JSON otomatis diambil dari Google Drive publik.")
+st.caption("📁 Semua file JSON otomatis diambil dari folder publik Google Drive.")
 st.caption("🔒 Akses terbatas untuk tenaga ahli dengan password yang valid.")
